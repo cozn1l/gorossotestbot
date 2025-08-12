@@ -92,77 +92,84 @@
     Telegram.WebApp.ready();
     const tg = Telegram.WebApp;
 
-    async function fetchProducts() {
+    function renderProducts(products) {
         const statusMessage = document.getElementById('status-message');
         const productsContainer = document.getElementById('products-container');
 
-        try {
-            // Запрос к API вашего бота
-            const response = await fetch('/api/products');
-            const products = await response.json();
+        if (products && products.length > 0) {
+            statusMessage.style.display = 'none';
+            productsContainer.innerHTML = '';
 
-            if (products && products.length > 0) {
-                statusMessage.style.display = 'none';
-                productsContainer.innerHTML = ''; // Очищаем контейнер
+            products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
 
-                products.forEach(product => {
-                    const productCard = document.createElement('div');
-                    productCard.className = 'product-card';
+                let sizesHtml = product.sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+                let colorsHtml = product.colors.map(c => `<option value="${c}">${c}</option>`).join('');
 
-                    let sizesHtml = product.sizes.map(s => `<option value="${s}">${s}</option>`).join('');
-                    let colorsHtml = product.colors.map(c => `<option value="${c}">${c}</option>`).join('');
-
-                    productCard.innerHTML = `
-                        <div class="product-header">
-                            <img src="${product.photo}" alt="${product.name}">
-                            <div class="product-details">
-                                <div class="product-name">${product.name}</div>
-                                <div class="product-price">${product.price / 100} ${tg.initDataUnsafe.currency || "MDL"}</div>
-                            </div>
+                productCard.innerHTML = `
+                    <div class="product-header">
+                        <img src="${product.photo}" alt="${product.name}">
+                        <div class="product-details">
+                            <div class="product-name">${product.name}</div>
+                            <div class="product-price">${product.price / 100} ${tg.initDataUnsafe.currency || "MDL"}</div>
                         </div>
-                        <div class="product-description">${product.description}</div>
-                        <div class="options">
-                            <label for="size-${product.id}">Размер:</label>
-                            <select id="size-${product.id}">${sizesHtml}</select>
-                            <label for="color-${product.id}">Цвет:</label>
-                            <select id="color-${product.id}">${colorsHtml}</select>
-                        </div>
-                        <button class="add-to-cart-btn" data-id="${product.id}" data-name="${product.name}">Добавить в корзину</button>
-                    `;
-                    productsContainer.appendChild(productCard);
-                });
+                    </div>
+                    <div class="product-description">${product.description}</div>
+                    <div class="options">
+                        <label for="size-${product.id}">Размер:</label>
+                        <select id="size-${product.id}">${sizesHtml}</select>
+                        <label for="color-${product.id}">Цвет:</label>
+                        <select id="color-${product.id}">${colorsHtml}</select>
+                    </div>
+                    <button class="add-to-cart-btn" data-id="${product.id}" data-name="${product.name}">Добавить в корзину</button>
+                `;
+                productsContainer.appendChild(productCard);
+            });
 
-                document.querySelectorAll('.add-to-cart-btn').forEach(button => {
-                    button.addEventListener('click', (event) => {
-                        const productId = event.target.dataset.id;
-                        const productName = event.target.dataset.name;
-                        const selectedSize = document.getElementById(`size-${productId}`).value;
-                        const selectedColor = document.getElementById(`color-${productId}`).value;
-
-                        const data = JSON.stringify({
-                            product_id: parseInt(productId),
-                            product_name: productName,
-                            size: selectedSize,
-                            color: selectedColor,
-                            qty: 1
-                        });
-
-                        tg.sendData(data);
-                        tg.close();
+            document.querySelectorAll('.add-to-cart-btn').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const productId = event.target.dataset.id;
+                    const productName = event.target.dataset.name;
+                    const selectedSize = document.getElementById(`size-${productId}`).value;
+                    const selectedColor = document.getElementById(`color-${productId}`).value;
+                    
+                    const data = JSON.stringify({
+                        product_id: parseInt(productId),
+                        product_name: productName,
+                        size: selectedSize,
+                        color: selectedColor,
+                        qty: 1
                     });
+                    
+                    tg.sendData(data);
+                    tg.close();
                 });
+            });
 
-            } else {
-                statusMessage.innerText = 'Товары не найдены.';
-            }
-
-        } catch (error) {
-            console.error('Ошибка при загрузке товаров:', error);
-            statusMessage.innerText = 'Не удалось загрузить товары.';
+        } else {
+            statusMessage.innerText = 'Товары не найдены.';
         }
     }
 
-    fetchProducts();
+    function getProductsFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const data = urlParams.get('data');
+        if (data) {
+            try {
+                const decodedData = decodeURIComponent(data);
+                const products = JSON.parse(decodedData);
+                renderProducts(products);
+            } catch (error) {
+                console.error('Ошибка при парсинге данных:', error);
+                document.getElementById('status-message').innerText = 'Не удалось загрузить данные о товарах.';
+            }
+        } else {
+            document.getElementById('status-message').innerText = 'Товары не найдены.';
+        }
+    }
+
+    getProductsFromUrl();
 </script>
 
 </body>
